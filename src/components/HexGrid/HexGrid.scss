@@ -1,0 +1,39 @@
+.hex-grid {
+    position: relative;
+    display: flex;
+    justify-content: center;
+
+    &._end {
+        transform-origin: 50% 50%;
+        transform-box: fill-box;
+        animation: gameOver 0.5s alternate 1 linear forwards;
+
+        &::after {
+            content: "Game Over!";
+            color: black;
+            margin-top: 50%;
+            z-index: 2;
+            font-size: 50px;
+            opacity: 0;
+            animation: gameOverText 0.5s alternate 0.5s 1 linear forwards;
+        }
+    }
+}
+
+@keyframes gameOver {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.3;
+    }
+}
+
+@keyframes gameOverText {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
