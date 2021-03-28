@@ -23,7 +23,9 @@ export class HexCalculations {
         return corners;
     }
 
-    static calculateHexSizeByHexRadius = (hexRadius: number): Point => ({ x: 2 * hexRadius, y: 2 * Math.sin(Math.PI / 180 * 60) * hexRadius });
+    static calculateHexSizeByHexRadius = (hexRadius: number): Point => (
+        { x: 2 * hexRadius, y: 2 * Math.sin(Math.PI / 180 * 60) * hexRadius }
+    );
 
     static mapHexCornersToSVGPath = (corners: Point[]): string => corners
         .map((corner: Point, index: number) => index === 0 ? `M${corner.x} ${corner.y}` : `L${corner.x} ${corner.y}`)

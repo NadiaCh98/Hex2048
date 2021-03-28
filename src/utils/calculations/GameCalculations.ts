@@ -78,11 +78,11 @@ export class GameCalculations {
         };
     }
 
-    private static groupHexsByDirection = <T extends CubeCoordinates>(coorForExpression: DirectionInfo, baseGrid: T[]): T[][] => _.chain(baseGrid)
-        .groupBy(coorForExpression.groupBy)
-        .map(data => _.sortBy(data, [coorForExpression.sortBy]))
-        .value();
-
+    private static groupHexsByDirection = <T extends CubeCoordinates>(coorForExpression: DirectionInfo, baseGrid: T[]): T[][] =>
+        _.chain(baseGrid)
+            .groupBy(coorForExpression.groupBy)
+            .map(data => _.sortBy(data, [coorForExpression.sortBy]))
+            .value();
 
     static isActiveGame = <T extends GameHex>(gameGrid: HexGameGrid<T>): boolean => {
         for (const direction of Object.values(Directions)) {

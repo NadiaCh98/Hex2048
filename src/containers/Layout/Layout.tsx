@@ -1,8 +1,7 @@
-import { AxiosResponse } from "axios";
+import axios, { AxiosResponse } from "axios";
 import React from "react";
 import { CubeCoordinatesWithValue, FilledGrid, GameHex, HexGameGrid } from "../../models/HexGrid";
 import { Point } from "../../models/Point";
-import rngServer from '../../axios-rng-server';
 import { HexCalculations } from "../../utils/calculations/HexCalculations";
 import { GameStatus } from "../../models/Status";
 import { GameCalculations } from "../../utils/calculations/GameCalculations";
@@ -18,7 +17,8 @@ interface LayoutState {
     maxRadius: number;
     hexSize: Point;
     gameGrid: HexGameGrid<GameHex>;
-    status: GameStatus
+    status: GameStatus;
+    serverUrl?: string;
 }
 
 const INIT_GAMEGRID: HexGameGrid<GameHex> = {
@@ -38,25 +38,22 @@ class Layout extends React.Component<{}, LayoutState> {
         hexSize: {
             x: 0,
             y: 0
-        }
+        },
+        serverUrl: process.env.REACT_APP_REMOTE_SERVER_URL
     }
 
     changeStatus = (isActiveGame: boolean) => {
         this.setState({ status: isActiveGame ? GameStatus.PLAYING : GameStatus.GAME_OVER });
     }
 
-    getGameRadiusFromLocationHash = (minRadius: number, maxRadius: number) => {
-        const localHash = window.location.hash;
-        if (localHash) {
-            const foundRadius = localHash.match(/\d*$/)?.join('');
-            const parseRadius = !!foundRadius ? parseInt(foundRadius) : null;
-            return !!parseRadius && parseRadius >= minRadius && parseRadius <= maxRadius ? parseRadius : null;
-        }
-        return null;
+    getGameRadiusFromLocationHash = (hash: string, minRadius: number, maxRadius: number): number => {
+        const foundRadius = hash.match(/\d*$/)?.join('');
+        const parseRadius = !!foundRadius ? parseInt(foundRadius) : null;
+        return !!parseRadius && parseRadius >= minRadius && parseRadius <= maxRadius ? parseRadius : 0;
     }
 
     getNewGridCellsFromServer = async (gameRadius: number, filledCells: CubeCoordinatesWithValue[]): Promise<CubeCoordinatesWithValue[]> =>
-        await rngServer.post(`/${gameRadius}`, filledCells)
+        await axios.post(`${this.state.serverUrl}/${gameRadius}`, filledCells)
             .then((response: AxiosResponse<CubeCoordinatesWithValue[]>) => response.data);
 
     updateGameGridByFiiledCells = async (gameRadius: number, filledCells: CubeCoordinatesWithValue[], gameGrid: HexGameGrid<GameHex>) => {
@@ -67,13 +64,13 @@ class Layout extends React.Component<{}, LayoutState> {
         this.setState({ gameGrid: updatedGameGrid });
     }
 
-    initNewGame = async (gameRadius: number) => {
+    initNewGame = async (gameRadius: number, serverUrl?: string) => {
         const hexRadius: number = HexCalculations.calculatePixelRadiusByGridWidth(this.state.layoutWidth, gameRadius);
         const hexSize: Point = HexCalculations.calculateHexSizeByHexRadius(hexRadius);
         const hexCorners: Point[] = HexCalculations.calculateHexCorners(hexSize, hexRadius);
         const gameGrid = HexCalculations.buildHexGrid(gameRadius, hexRadius, hexCorners);
         this.setState(
-            { radius: gameRadius, gameGrid, hexSize },
+            { radius: gameRadius, gameGrid, hexSize, status: GameStatus.PLAYING, serverUrl: serverUrl || this.state.serverUrl },
             () => this.updateGameGridByFiiledCells(gameRadius, [], gameGrid));
     }
 
@@ -91,21 +88,34 @@ class Layout extends React.Component<{}, LayoutState> {
         if (this.state.minRadius <= value && value <= this.state.maxRadius) {
             this.setState(
                 {
-                    radius: value, status: GameStatus.PLAYING, gameGrid: { ...INIT_GAMEGRID }
-                }, () => this.initNewGame(value));
+                    radius: value, gameGrid: { ...INIT_GAMEGRID }
+                },
+                () => this.initNewGame(value)
+            );
         }
     }
 
     componentDidMount() {
-        const gameRadius = this.getGameRadiusFromLocationHash(this.state.minRadius, this.state.maxRadius) || this.state.radius;
         document.addEventListener('keydown', this.makeStep);
-        this.initNewGame(gameRadius);
+        const localHash = window.location.hash;
+        const gameRadius = localHash
+            ? this.getGameRadiusFromLocationHash(localHash, this.state.minRadius, this.state.maxRadius)
+            : this.state.radius;
+        const serverUrl = localHash && process.env.REACT_APP_LOCALHOST_SERVER_URL;
+        this.initNewGame(gameRadius, serverUrl);
     }
 
     render() {
         const baseGrid: FilledGrid<GameHex> = new Map(this.state.gameGrid.baseGrid.map((cell, index) => [index, cell]));
         return (
             <div className="layout" style={{ width: this.state.layoutWidth }}>
+                <select id="url-server"
+                    value={this.state.serverUrl}
+                    onChange={event => this.initNewGame(this.state.radius, event.target.value)}
+                >
+                    <option id="remote" value={process.env.REACT_APP_REMOTE_SERVER_URL}>Remote server</option>
+                    <option id="localhost" value={process.env.REACT_APP_LOCALHOST_SERVER_URL}>Local server</option>
+                </select>
                 <Toolbar minValue={this.state.minRadius} maxValue={this.state.maxRadius}
                     currentValue={this.state.radius} changeValue={(value) => this.changeGameSize(value)} />
                 <div>
